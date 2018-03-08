@@ -91,6 +91,11 @@ rows (Board rows) =
     rows
 
 
+size : Board -> Int
+size =
+    rows >> List.length
+
+
 updateRows : List Row -> Board -> Board
 updateRows rows (Board _) =
     Board rows
@@ -134,9 +139,8 @@ getCellNeighbor cell board direction =
 
 findWinner : Board -> Player
 findWinner board =
-    getTopRow board
-        ++ getLeftColumn board
-        --TODO: uniqify?
+    (getTopRow board ++ getLeftColumn board)
+        |> Utils.uniqify
         |> List.foldl
             (\cell alreadyFoundWinner ->
                 case alreadyFoundWinner of
@@ -180,41 +184,52 @@ findWinnerFromCell cell board =
 
 checkPathWinner : Board -> List Cell -> Player
 checkPathWinner board cells =
-    case cells of
-        h :: rest ->
-            if List.length cells < List.length (rows board) then
-                Nobody
-            else
-                rest
-                    |> List.foldl
-                        (\cell acc ->
-                            if cellOwner cell == acc then
-                                acc
-                            else
-                                Nobody
-                        )
-                        (cellOwner h)
+    if List.length cells < size board then
+        Nobody
+    else
+        List.tail cells
+            |> Maybe.withDefault []
+            |> List.foldl
+                (\cell acc ->
+                    if cellOwner cell == acc then
+                        acc
+                    else
+                        Nobody
+                )
+                (List.head cells |> Maybe.map cellOwner |> Maybe.withDefault Nobody)
 
-        [] ->
-            Nobody
+
+
+-- case cells of
+--     h :: rest ->
+--         if List.length cells < size board then
+--             Nobody
+--         else
+--             rest
+--                 |> List.foldl
+--                     (\cell acc ->
+--                         if cellOwner cell == acc then
+--                             acc
+--                         else
+--                             Nobody
+--                     )
+--                     (cellOwner h)
+--
+--     [] ->
+--         Nobody
 
 
 findPathsFromCell : Cell -> Board -> List (List Cell)
 findPathsFromCell cell board =
     [ Above, Left, AboveLeft, AboveRight ]
-        |> List.map
-            (\direction ->
-                searchOutwards cell board direction
-            )
+        |> List.map (searchOutwards cell board)
 
 
 searchOutwards : Cell -> Board -> Direction -> List Cell
 searchOutwards cell board direction =
-    let
-        opposite =
-            oppositeDirection direction
-    in
-    searchDirection cell board direction ++ searchDirection cell board opposite
+    searchDirection cell board direction
+        ++ searchDirection cell board (oppositeDirection direction)
+        |> Utils.uniqify
 
 
 searchDirection : Cell -> Board -> Direction -> List Cell

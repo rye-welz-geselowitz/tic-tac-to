@@ -1,4 +1,6 @@
-module Utils exposing (generateListInRange, updateListAt)
+module Utils exposing (generateListInRange, uniqify, updateListAt)
+
+import Dict
 
 
 generateListInRange : Int -> (Int -> a) -> List a
@@ -18,3 +20,16 @@ updateIfTarget targetIdx update idx item =
         update item
     else
         item
+
+
+uniqify : List a -> List a
+uniqify list =
+    list
+        |> List.foldl
+            (\item acc ->
+                if not (List.member item acc) then
+                    item :: acc
+                else
+                    acc
+            )
+            []
