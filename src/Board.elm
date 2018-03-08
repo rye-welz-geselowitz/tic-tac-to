@@ -134,7 +134,9 @@ setCellOwner cell player =
 
 getCellNeighbor : Cell -> Board -> Direction -> Maybe Cell
 getCellNeighbor cell board direction =
-    getCellNeighborCoordinates direction cell |> getCellAt board
+    cellCoordinates cell
+        |> getCellNeighborCoordinates direction
+        |> getCellAt board
 
 
 findWinner : Board -> Player
@@ -183,40 +185,20 @@ findWinnerFromCell cell board =
 
 
 checkPathWinner : Board -> List Cell -> Player
-checkPathWinner board cells =
-    if List.length cells < size board then
-        Nobody
+checkPathWinner board path =
+    if countCellsOwnedByPlayer path X == size board then
+        X
+    else if countCellsOwnedByPlayer path O == size board then
+        O
     else
-        List.tail cells
-            |> Maybe.withDefault []
-            |> List.foldl
-                (\cell acc ->
-                    if cellOwner cell == acc then
-                        acc
-                    else
-                        Nobody
-                )
-                (List.head cells |> Maybe.map cellOwner |> Maybe.withDefault Nobody)
+        Nobody
 
 
-
--- case cells of
---     h :: rest ->
---         if List.length cells < size board then
---             Nobody
---         else
---             rest
---                 |> List.foldl
---                     (\cell acc ->
---                         if cellOwner cell == acc then
---                             acc
---                         else
---                             Nobody
---                     )
---                     (cellOwner h)
---
---     [] ->
---         Nobody
+countCellsOwnedByPlayer : List Cell -> Player -> Int
+countCellsOwnedByPlayer cells player =
+    cells
+        |> List.filter (cellOwner >> (==) player)
+        |> List.length
 
 
 findPathsFromCell : Cell -> Board -> List (List Cell)
@@ -242,37 +224,33 @@ searchDirection cell board direction =
             cell :: searchDirection neighbor board direction
 
 
-getCellNeighborCoordinates : Direction -> Cell -> Coordinates
-getCellNeighborCoordinates direction cell =
-    let
-        ( rowIdx, colIdx ) =
-            cellCoordinates cell
-    in
+getCellNeighborCoordinates : Direction -> Coordinates -> Coordinates
+getCellNeighborCoordinates direction =
     case direction of
-        --TODO: consolodate?!?!
+        --TODO: consolodate?!?! EXTRACT coordinates!!!
         Above ->
-            ( rowIdx - 1, colIdx )
+            getCoordinatesAbove
 
         Below ->
-            ( rowIdx + 1, colIdx )
+            getCoordinatesBelow
 
         Left ->
-            ( rowIdx, colIdx - 1 )
+            getCoordinatesLeft
 
         Right ->
-            ( rowIdx, colIdx + 1 )
+            getCoordinatesRight
 
         AboveLeft ->
-            ( rowIdx - 1, colIdx - 1 )
+            getCoordinatesAbove >> getCoordinatesLeft
 
         AboveRight ->
-            ( rowIdx - 1, colIdx + 1 )
+            getCoordinatesAbove >> getCoordinatesRight
 
         BelowLeft ->
-            ( rowIdx + 1, colIdx - 1 )
+            getCoordinatesBelow >> getCoordinatesLeft
 
         BelowRight ->
-            ( rowIdx + 1, colIdx + 1 )
+            getCoordinatesBelow >> getCoordinatesRight
 
 
 type Direction
@@ -312,3 +290,33 @@ oppositeDirection direction =
 
         BelowRight ->
             AboveLeft
+
+
+getCoordinatesAbove : Coordinates -> Coordinates
+getCoordinatesAbove =
+    addToRowCoordinate -1
+
+
+getCoordinatesBelow : Coordinates -> Coordinates
+getCoordinatesBelow =
+    addToRowCoordinate 1
+
+
+getCoordinatesLeft : Coordinates -> Coordinates
+getCoordinatesLeft =
+    addToColumnCoordinate -1
+
+
+getCoordinatesRight : Coordinates -> Coordinates
+getCoordinatesRight =
+    addToColumnCoordinate 1
+
+
+addToRowCoordinate : Int -> Coordinates -> Coordinates
+addToRowCoordinate n ( row, col ) =
+    ( row + n, col )
+
+
+addToColumnCoordinate : Int -> Coordinates -> Coordinates
+addToColumnCoordinate n ( row, col ) =
+    ( row, col + n )
