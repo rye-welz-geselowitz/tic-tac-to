@@ -6,6 +6,7 @@ module Board
         , findWinner
         , isCellOpen
         , new
+        , openCells
         , rows
         , setCellOwner
         )
@@ -64,6 +65,11 @@ rows board =
 findWinner : Board -> Player
 findWinner board =
     getOuterCorner board |> List.foldl (findWinnerFromCell board) Nobody
+
+
+openCells : Board -> List Cell
+openCells board =
+    cells board |> List.filter isCellOpen
 
 
 

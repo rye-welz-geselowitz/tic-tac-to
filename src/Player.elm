@@ -17,5 +17,4 @@ getNext player =
             X
 
         Nobody ->
-            --TODO: think about this
             X

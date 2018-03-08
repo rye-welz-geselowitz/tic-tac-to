@@ -13,6 +13,7 @@ import Player exposing (Player(..))
 init : ( Model, Cmd Msg )
 init =
     ( { game = Game.new 3
+      , mode = OnePlayer
       }
     , Cmd.none
     )
@@ -20,7 +21,13 @@ init =
 
 type alias Model =
     { game : Game
+    , mode : Mode
     }
+
+
+type Mode
+    = TwoPlayer
+    | OnePlayer
 
 
 
@@ -28,14 +35,23 @@ type alias Model =
 
 
 type Msg
-    = ClaimCell Cell
+    = InitiateGame Mode
+    | ClaimCell Cell
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        InitiateGame mode ->
+            ( model, Cmd.none )
+
         ClaimCell cell ->
-            ( { model | game = Game.claimCell cell model.game }, Cmd.none )
+            ( { model
+                | game =
+                    Game.claimCell cell model.game
+              }
+            , Cmd.none
+            )
 
 
 
@@ -45,7 +61,30 @@ update msg model =
 view : Model -> Html Msg
 view model =
     div []
-        [ gameView model.game ]
+        [ gameView model.game
+        , modeView model.mode
+        , restartButtons
+        ]
+
+
+restartButtons : Html Msg
+restartButtons =
+    div []
+        [ button [ onClick <| InitiateGame TwoPlayer ]
+            [ text "Start Two Player Game" ]
+        , button [ onClick <| InitiateGame OnePlayer ]
+            [ text "Start One Player Game" ]
+        ]
+
+
+modeView : Mode -> Html Msg
+modeView mode =
+    case mode of
+        OnePlayer ->
+            text "Playing computer"
+
+        TwoPlayer ->
+            text "Two players"
 
 
 gameView : Game -> Html Msg

@@ -9,6 +9,7 @@ type Game
         { player : Player
         , board : Board
         , winner : Player
+        , isActive : Bool --TODO: give this meaning!
         }
 
 
@@ -18,6 +19,7 @@ new count =
         { player = X
         , board = Board.new count
         , winner = Nobody
+        , isActive = False
         }
 
 
