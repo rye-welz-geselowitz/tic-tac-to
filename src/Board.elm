@@ -3,7 +3,6 @@ module Board
         ( Board
         , Cell
         , cellOwner
-        , cells
         , findWinner
         , isCellOpen
         , new
@@ -11,20 +10,24 @@ module Board
         , setCellOwner
         )
 
-import Coordinates exposing (Coordinates, Direction(..))
+import Coordinates exposing (Coordinates, Direction)
 import Player exposing (Player(..))
 
 
-{- Cell -}
+{- Types -}
+
+
+type Board
+    = Board (List Cell)
 
 
 type Cell
     = Cell Coordinates Player
 
 
-newCellAt : Coordinates -> Cell
-newCellAt coordinates =
-    Cell coordinates Nobody
+
+-- CELL
+{- Exposed -}
 
 
 cellOwner : Cell -> Player
@@ -37,6 +40,46 @@ isCellOpen cell =
     cellOwner cell == Nobody
 
 
+setCellOwner : Cell -> Player -> Board -> Board
+setCellOwner cell player =
+    updateCell cell (updateCellOwner player)
+
+
+
+-- BOARD
+{- Exposed -}
+
+
+new : Int -> Board
+new n =
+    List.range 0 (n * n - 1) |> List.map (newCellFromFlatIdx n) |> Board
+
+
+rows : Board -> List (List Cell)
+rows board =
+    List.range 0 (size board - 1)
+        |> List.map (row board)
+
+
+findWinner : Board -> Player
+findWinner board =
+    getOuterCorner board |> List.foldl (findWinnerFromCell board) Nobody
+
+
+
+-- HELPERS
+
+
+newCellAt : Coordinates -> Cell
+newCellAt coordinates =
+    Cell coordinates Nobody
+
+
+newCellFromFlatIdx : Int -> Int -> Cell
+newCellFromFlatIdx n idx =
+    newCellAt ( idx // n, idx % n )
+
+
 cellCoordinates : Cell -> Coordinates
 cellCoordinates (Cell coordinates _) =
     coordinates
@@ -45,6 +88,11 @@ cellCoordinates (Cell coordinates _) =
 updateCellOwner : Player -> Cell -> Cell
 updateCellOwner owner (Cell coordinates _) =
     Cell coordinates owner
+
+
+getOuterCorner : Board -> List Cell
+getOuterCorner board =
+    cells board |> List.filter isInOuterCorner
 
 
 isInOuterCorner : Cell -> Bool
@@ -56,43 +104,14 @@ isInOuterCorner cell =
     rowIdx == 0 || colIdx == 0
 
 
-newCellFromFlatIdx : Int -> Int -> Cell
-newCellFromFlatIdx n idx =
-    newCellAt ( idx // n, idx % n )
-
-
-
-{- Board -}
-
-
-type Board
-    = Board (List Cell)
-
-
-new : Int -> Board
-new n =
-    List.range 0 (n * n - 1) |> List.map (newCellFromFlatIdx n) |> Board
-
-
-getOuterCorner : Board -> List Cell
-getOuterCorner board =
-    cells board |> List.filter isInOuterCorner
-
-
-rows : Board -> List (List Cell)
-rows board =
-    List.range 0 (size board - 1)
-        |> List.map (row board)
+cells : Board -> List Cell
+cells (Board cells) =
+    cells
 
 
 row : Board -> Int -> List Cell
 row board rowIdx =
-    cells board |> List.filter (cellCoordinates >> Coordinates.rowIndex >> (==) rowIdx)
-
-
-cells : Board -> List Cell
-cells (Board cells) =
-    cells
+    cells board |> List.filter (cellCoordinates >> Tuple.first >> (==) rowIdx)
 
 
 size : Board -> Int
@@ -120,31 +139,6 @@ updateCell targetCell fn board =
     cells board
         |> List.map (updateIfTarget (isTargetCell <| cellCoordinates targetCell) fn)
         |> flip updateCells board
-
-
-updateIfTarget : (a -> Bool) -> (a -> a) -> a -> a
-updateIfTarget isTarget update item =
-    if isTarget item then
-        update item
-    else
-        item
-
-
-setCellOwner : Cell -> Player -> Board -> Board
-setCellOwner cell player =
-    updateCell cell (updateCellOwner player)
-
-
-getCellNeighbor : Cell -> Board -> Direction -> Maybe Cell
-getCellNeighbor cell board direction =
-    cellCoordinates cell
-        |> Coordinates.getCellNeighborCoordinates direction
-        |> getCellAt board
-
-
-findWinner : Board -> Player
-findWinner board =
-    getOuterCorner board |> List.foldl (findWinnerFromCell board) Nobody
 
 
 findWinnerFromCell : Board -> Cell -> Player -> Player
@@ -186,31 +180,18 @@ countCellsOwnedByPlayer cells player =
 
 findPathsFromCell : Cell -> Board -> List (List Cell)
 findPathsFromCell cell board =
-    [ Above, Left, AboveLeft, AboveRight ]
+    [ Coordinates.up, Coordinates.left, Coordinates.upLeft, Coordinates.upRight ]
         |> List.map (searchOutwards cell board)
 
 
-
---TODO: extract all this direction stuff!!
-
-
 searchOutwards : Cell -> Board -> Direction -> List Cell
-searchOutwards cell board direction =
-    let
-        oppositeDirection =
-            Coordinates.oppositeDirection direction
-
-        search =
-            searchDirection cell board
-    in
-    search direction ++ (search oppositeDirection |> List.drop 1)
+searchOutwards cell board =
+    Coordinates.searchOutwards cell cellCoordinates (getCellAt board)
 
 
-searchDirection : Cell -> Board -> Direction -> List Cell
-searchDirection cell board direction =
-    case getCellNeighbor cell board direction of
-        Nothing ->
-            [ cell ]
-
-        Just neighbor ->
-            cell :: searchDirection neighbor board direction
+updateIfTarget : (a -> Bool) -> (a -> a) -> a -> a
+updateIfTarget isTarget update item =
+    if isTarget item then
+        update item
+    else
+        item

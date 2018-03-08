@@ -12,7 +12,7 @@ import Player exposing (Player(..))
 
 init : ( Model, Cmd Msg )
 init =
-    ( { game = Game.new 4
+    ( { game = Game.new 3
       }
     , Cmd.none
     )

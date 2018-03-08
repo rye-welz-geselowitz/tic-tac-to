@@ -1,76 +1,101 @@
 module Coordinates
     exposing
         ( Coordinates
-        , Direction(..)
-        , columnIndex
-        , getCellNeighborCoordinates
-        , oppositeDirection
-        , rowIndex
+        , Direction
+        , left
+        , searchOutwards
+        , up
+        , upLeft
+        , upRight
         )
+
+{- Types -}
 
 
 type alias Coordinates =
     ( Int, Int )
 
 
-rowIndex : Coordinates -> Int
-rowIndex =
-    Tuple.first
-
-
-columnIndex : Coordinates -> Int
-columnIndex =
-    Tuple.second
-
-
-getCellNeighborCoordinates : Direction -> Coordinates -> Coordinates
-getCellNeighborCoordinates direction =
-    case direction of
-        --TODO: consolodate?!?! EXTRACT coordinates!!! RENAME!!!
-        Above ->
-            getCoordinatesAbove
-
-        Below ->
-            getCoordinatesBelow
-
-        Left ->
-            getCoordinatesLeft
-
-        Right ->
-            getCoordinatesRight
-
-        AboveLeft ->
-            getCoordinatesAbove >> getCoordinatesLeft
-
-        AboveRight ->
-            getCoordinatesAbove >> getCoordinatesRight
-
-        BelowLeft ->
-            getCoordinatesBelow >> getCoordinatesLeft
-
-        BelowRight ->
-            getCoordinatesBelow >> getCoordinatesRight
-
-
 type Direction
-    = Above
-    | Below
+    = Direction (List BasicDirection)
+
+
+type BasicDirection
+    = Up
+    | Down
     | Left
     | Right
-    | AboveLeft
-    | AboveRight
-    | BelowLeft
-    | BelowRight
+
+
+
+{- Default directions -}
+
+
+up : Direction
+up =
+    Direction [ Up ]
+
+
+down : Direction
+down =
+    Direction [ Down ]
+
+
+left : Direction
+left =
+    Direction [ Left ]
+
+
+right : Direction
+right =
+    Direction [ Right ]
+
+
+upRight : Direction
+upRight =
+    Direction [ Up, Right ]
+
+
+upLeft : Direction
+upLeft =
+    Direction [ Up, Left ]
+
+
+
+{- Search coordinate system -}
+
+
+searchOutwards :
+    item
+    -> (item -> Coordinates)
+    -> (Coordinates -> Maybe item)
+    -> Direction
+    -> List item
+searchOutwards item getCoordinates itemAt direction =
+    let
+        search =
+            searchDirection item getCoordinates itemAt
+    in
+    search direction ++ (oppositeDirection direction |> search |> List.drop 1)
+
+
+
+-- HELPERS
 
 
 oppositeDirection : Direction -> Direction
-oppositeDirection direction =
-    case direction of
-        Above ->
-            Below
+oppositeDirection (Direction directions) =
+    List.map oppositeBasicDirection directions |> Direction
 
-        Below ->
-            Above
+
+oppositeBasicDirection : BasicDirection -> BasicDirection
+oppositeBasicDirection direction =
+    case direction of
+        Up ->
+            Down
+
+        Down ->
+            Up
 
         Left ->
             Right
@@ -78,17 +103,21 @@ oppositeDirection direction =
         Right ->
             Left
 
-        AboveLeft ->
-            BelowRight
 
-        AboveRight ->
-            BelowLeft
+basicDirectionMove : BasicDirection -> Coordinates -> Coordinates
+basicDirectionMove direction =
+    case direction of
+        Up ->
+            getCoordinatesAbove
 
-        BelowLeft ->
-            AboveRight
+        Down ->
+            getCoordinatesBelow
 
-        BelowRight ->
-            AboveLeft
+        Left ->
+            getCoordinatesLeft
+
+        Right ->
+            getCoordinatesRight
 
 
 getCoordinatesAbove : Coordinates -> Coordinates
@@ -119,3 +148,33 @@ addToRowCoordinate n ( row, col ) =
 addToColumnCoordinate : Int -> Coordinates -> Coordinates
 addToColumnCoordinate n ( row, col ) =
     ( row, col + n )
+
+
+searchDirection :
+    item
+    -> (item -> Coordinates)
+    -> (Coordinates -> Maybe item)
+    -> Direction
+    -> List item
+searchDirection item getCoordinates itemAt direction =
+    case neighbor getCoordinates direction itemAt item of
+        Nothing ->
+            [ item ]
+
+        Just neighbor ->
+            item :: searchDirection neighbor getCoordinates itemAt direction
+
+
+neighbor :
+    (item -> Coordinates)
+    -> Direction
+    -> (Coordinates -> Maybe item)
+    -> item
+    -> Maybe item
+neighbor getCoordinates direction itemAt =
+    getCoordinates >> neighborCoordinates direction >> itemAt
+
+
+neighborCoordinates : Direction -> Coordinates -> Coordinates
+neighborCoordinates (Direction directions) =
+    List.foldl (\direction fn -> fn >> basicDirectionMove direction) identity directions
