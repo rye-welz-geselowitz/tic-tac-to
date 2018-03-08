@@ -1,16 +1,24 @@
-module Game exposing (Game, board, claimCell, new)
+module Game exposing (Game, board, claimCell, new, player, winner)
 
 import Board exposing (Board, Cell)
 import Player exposing (Player(..))
 
 
 type Game
-    = Game Player Board
+    = Game
+        { player : Player
+        , board : Board
+        , winner : Player
+        }
 
 
-new : Int -> Int -> Game
-new rowCount colCount =
-    Game X (Board.new rowCount colCount)
+new : Int -> Game
+new count =
+    Game
+        { player = X
+        , board = Board.new count
+        , winner = Nobody
+        }
 
 
 claimCell : Cell -> Game -> Game
@@ -18,31 +26,49 @@ claimCell cell game =
     if Board.isCellOpen cell then
         let
             newBoard =
-                board game |> Board.updateCellOwner cell (player game)
+                board game |> Board.setCellOwner cell (player game)
         in
-        game |> updateBoard newBoard |> setNextPlayer
+        game
+            |> updateBoard newBoard
+            |> setNextPlayer
+            |> setWinner
     else
         game
 
 
+setWinner : Game -> Game
+setWinner game =
+    updateWinner (Board.findWinner (board game)) game
+
+
 board : Game -> Board
-board (Game _ board) =
-    board
+board (Game data) =
+    data.board
 
 
 player : Game -> Player
-player (Game player _) =
-    player
+player (Game data) =
+    data.player
+
+
+winner : Game -> Player
+winner (Game data) =
+    data.winner
 
 
 updateBoard : Board -> Game -> Game
-updateBoard board (Game player _) =
-    Game player board
+updateBoard board (Game data) =
+    Game { data | board = board }
+
+
+updateWinner : Player -> Game -> Game
+updateWinner winner (Game data) =
+    Game { data | winner = winner }
 
 
 updatePlayer : Player -> Game -> Game
-updatePlayer player (Game _ board) =
-    Game player board
+updatePlayer player (Game data) =
+    Game { data | player = player }
 
 
 setNextPlayer : Game -> Game

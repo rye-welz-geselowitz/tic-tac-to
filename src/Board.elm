@@ -1,14 +1,21 @@
-module Board exposing (Board, Cell, Row, cellOwner, isCellOpen, new, rows, updateCellOwner)
+module Board
+    exposing
+        ( Board
+        , Cell
+        , Row
+        , cellOwner
+        , findWinner
+        , isCellOpen
+        , new
+        , rows
+        , setCellOwner
+        )
 
 import Player exposing (Player(..))
+import Utils
 
 
-type Board
-    = Board (List Row)
-
-
-type alias Row =
-    List Cell
+{- Cell -}
 
 
 type Cell
@@ -37,11 +44,6 @@ isCellOpen cell =
     cellOwner cell == Nobody
 
 
-updateCellOWner : Player -> Cell -> Cell
-updateCellOWner owner (Cell coordinates _) =
-    Cell coordinates owner
-
-
 cellCoordinates : Cell -> Coordinates
 cellCoordinates (Cell coordinates _) =
     coordinates
@@ -57,6 +59,33 @@ cellColIdx =
     cellCoordinates >> Tuple.second
 
 
+updateCellOwner : Player -> Cell -> Cell
+updateCellOwner owner (Cell coordinates _) =
+    Cell coordinates owner
+
+
+
+{- Board -}
+
+
+type Board
+    = Board (List Row)
+
+
+type alias Row =
+    List Cell
+
+
+new : Int -> Board
+new count =
+    Board <| Utils.generateListInRange (count - 1) (newRow (count - 1))
+
+
+newRow : Int -> RowIndex -> Row
+newRow upperBound rowIdx =
+    Utils.generateListInRange upperBound (\colIdx -> Cell ( rowIdx, colIdx ) Nobody)
+
+
 rows : Board -> List Row
 rows (Board rows) =
     rows
@@ -65,31 +94,6 @@ rows (Board rows) =
 updateRows : List Row -> Board -> Board
 updateRows rows (Board _) =
     Board rows
-
-
-new : Int -> Int -> Board
-new rowCount colCount =
-    generateInRange (rowCount - 1)
-        (\rowIdx -> generateInRange (colCount - 1) (\colIdx -> Cell ( rowIdx, colIdx ) Nobody))
-        |> Board
-
-
-generateInRange : Int -> (Int -> a) -> List a
-generateInRange upperBound fn =
-    --TODO: better name
-    List.range 0 upperBound |> List.map fn
-
-
-updateAt : Int -> (a -> a) -> List a -> List a
-updateAt targetIdx fnUpdate list =
-    list
-        |> List.indexedMap
-            (\idx item ->
-                if targetIdx == idx then
-                    fnUpdate item
-                else
-                    item
-            )
 
 
 getCellAt : Board -> Coordinates -> Maybe Cell
@@ -109,35 +113,118 @@ getCellAt board coordinates =
             Nothing
 
 
-isCellInWinningPath : Cell -> Board -> Bool
-isCellInWinningPath cell board =
-    False
-
-
 updateCell : Cell -> (Cell -> Cell) -> Board -> Board
 updateCell cell fn board =
     let
         newRows =
-            rows board |> updateAt (cellRowIdx cell) (updateAt (cellColIdx cell) fn)
+            rows board |> Utils.updateListAt (cellRowIdx cell) (Utils.updateListAt (cellColIdx cell) fn)
     in
     board |> updateRows newRows
 
 
-updateCellOwner : Cell -> Player -> Board -> Board
-updateCellOwner cell player =
-    updateCell cell (updateCellOWner player)
-
-
-
--- getCellNeighbors : Cell -> Board -> List Cell
--- getCellNeighbors cell board =
---     [ Above, Below, Left, Right ] |> List.filterMap (getCellNeighbor cell board)
+setCellOwner : Cell -> Player -> Board -> Board
+setCellOwner cell player =
+    updateCell cell (updateCellOwner player)
 
 
 getCellNeighbor : Cell -> Board -> Direction -> Maybe Cell
 getCellNeighbor cell board direction =
-    getCellNeighborCoordinates direction cell
-        |> getCellAt board
+    getCellNeighborCoordinates direction cell |> getCellAt board
+
+
+findWinner : Board -> Player
+findWinner board =
+    getTopRow board
+        ++ getLeftColumn board
+        --TODO: uniqify?
+        |> List.foldl
+            (\cell alreadyFoundWinner ->
+                case alreadyFoundWinner of
+                    Nobody ->
+                        findWinnerFromCell cell board
+
+                    winner ->
+                        winner
+            )
+            Nobody
+
+
+getTopRow : Board -> List Cell
+getTopRow board =
+    List.head (rows board) |> Maybe.withDefault []
+
+
+getLeftColumn : Board -> List Cell
+getLeftColumn board =
+    rows board
+        |> List.concatMap
+            (\row ->
+                List.head row |> Maybe.map List.singleton |> Maybe.withDefault []
+            )
+
+
+findWinnerFromCell : Cell -> Board -> Player
+findWinnerFromCell cell board =
+    findPathsFromCell cell board
+        |> List.foldl
+            (\path acc ->
+                case acc of
+                    Nobody ->
+                        checkPathWinner board path
+
+                    winner ->
+                        winner
+            )
+            Nobody
+
+
+checkPathWinner : Board -> List Cell -> Player
+checkPathWinner board cells =
+    case cells of
+        h :: rest ->
+            if List.length cells < List.length (rows board) then
+                Nobody
+            else
+                rest
+                    |> List.foldl
+                        (\cell acc ->
+                            if cellOwner cell == acc then
+                                acc
+                            else
+                                Nobody
+                        )
+                        (cellOwner h)
+
+        [] ->
+            Nobody
+
+
+findPathsFromCell : Cell -> Board -> List (List Cell)
+findPathsFromCell cell board =
+    [ Above, Left, AboveLeft, AboveRight ]
+        |> List.map
+            (\direction ->
+                searchOutwards cell board direction
+            )
+
+
+searchOutwards : Cell -> Board -> Direction -> List Cell
+searchOutwards cell board direction =
+    let
+        opposite =
+            oppositeDirection direction
+    in
+    searchDirection cell board direction ++ searchDirection cell board opposite
+
+
+searchDirection : Cell -> Board -> Direction -> List Cell
+searchDirection cell board direction =
+    case getCellNeighbor cell board direction of
+        Nothing ->
+            [ cell ]
+
+        Just neighbor ->
+            cell :: searchDirection neighbor board direction
 
 
 getCellNeighborCoordinates : Direction -> Cell -> Coordinates
@@ -182,3 +269,31 @@ type Direction
     | AboveRight
     | BelowLeft
     | BelowRight
+
+
+oppositeDirection : Direction -> Direction
+oppositeDirection direction =
+    case direction of
+        Above ->
+            Below
+
+        Below ->
+            Above
+
+        Left ->
+            Right
+
+        Right ->
+            Left
+
+        AboveLeft ->
+            BelowRight
+
+        AboveRight ->
+            BelowLeft
+
+        BelowLeft ->
+            AboveRight
+
+        BelowRight ->
+            AboveLeft

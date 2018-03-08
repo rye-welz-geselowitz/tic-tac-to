@@ -12,7 +12,7 @@ import Player exposing (Player(..))
 
 init : ( Model, Cmd Msg )
 init =
-    ( { game = Game.new 3 3
+    ( { game = Game.new 3
       }
     , Cmd.none
     )
@@ -45,7 +45,38 @@ update msg model =
 view : Model -> Html Msg
 view model =
     div []
-        [ boardView (Game.board model.game) ]
+        [ gameView model.game ]
+
+
+gameView : Game -> Html Msg
+gameView game =
+    div []
+        [ boardView (Game.board game)
+        , turnView game
+        ]
+
+
+turnView : Game -> Html Msg
+turnView game =
+    (case ( Game.winner game, Game.player game ) of
+        ( Nobody, X ) ->
+            "X turn"
+
+        ( Nobody, O ) ->
+            "O turn"
+
+        ( X, _ ) ->
+            "X won!!"
+
+        ( O, _ ) ->
+            "O won!!"
+
+        _ ->
+            "Something wrong"
+    )
+        |> text
+        |> List.singleton
+        |> div []
 
 
 boardView : Board -> Html Msg
