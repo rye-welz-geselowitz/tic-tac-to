@@ -2,8 +2,8 @@ module Board
     exposing
         ( Board
         , Cell
-        , Row
         , cellOwner
+        , cells
         , findWinner
         , isCellOpen
         , new
@@ -11,8 +11,8 @@ module Board
         , setCellOwner
         )
 
+import Coordinates exposing (Coordinates, Direction(..))
 import Player exposing (Player(..))
-import Utils
 
 
 {- Cell -}
@@ -22,16 +22,9 @@ type Cell
     = Cell Coordinates Player
 
 
-type alias Coordinates =
-    ( RowIndex, ColumnIndex )
-
-
-type alias RowIndex =
-    Int
-
-
-type alias ColumnIndex =
-    Int
+newCellAt : Coordinates -> Cell
+newCellAt coordinates =
+    Cell coordinates Nobody
 
 
 cellOwner : Cell -> Player
@@ -49,19 +42,23 @@ cellCoordinates (Cell coordinates _) =
     coordinates
 
 
-cellRowIdx : Cell -> RowIndex
-cellRowIdx =
-    cellCoordinates >> Tuple.first
-
-
-cellColIdx : Cell -> RowIndex
-cellColIdx =
-    cellCoordinates >> Tuple.second
-
-
 updateCellOwner : Player -> Cell -> Cell
 updateCellOwner owner (Cell coordinates _) =
     Cell coordinates owner
+
+
+isInOuterCorner : Cell -> Bool
+isInOuterCorner cell =
+    let
+        ( rowIdx, colIdx ) =
+            cellCoordinates cell
+    in
+    rowIdx == 0 || colIdx == 0
+
+
+newCellFromFlatIdx : Int -> Int -> Cell
+newCellFromFlatIdx n idx =
+    newCellAt ( idx // n, idx % n )
 
 
 
@@ -69,62 +66,68 @@ updateCellOwner owner (Cell coordinates _) =
 
 
 type Board
-    = Board (List Row)
-
-
-type alias Row =
-    List Cell
+    = Board (List Cell)
 
 
 new : Int -> Board
-new count =
-    Board <| Utils.generateListInRange (count - 1) (newRow (count - 1))
+new n =
+    List.range 0 (n * n - 1) |> List.map (newCellFromFlatIdx n) |> Board
 
 
-newRow : Int -> RowIndex -> Row
-newRow upperBound rowIdx =
-    Utils.generateListInRange upperBound (\colIdx -> Cell ( rowIdx, colIdx ) Nobody)
+getOuterCorner : Board -> List Cell
+getOuterCorner board =
+    cells board |> List.filter isInOuterCorner
 
 
-rows : Board -> List Row
-rows (Board rows) =
-    rows
+rows : Board -> List (List Cell)
+rows board =
+    List.range 0 (size board - 1)
+        |> List.map (row board)
+
+
+row : Board -> Int -> List Cell
+row board rowIdx =
+    cells board |> List.filter (cellCoordinates >> Coordinates.rowIndex >> (==) rowIdx)
+
+
+cells : Board -> List Cell
+cells (Board cells) =
+    cells
 
 
 size : Board -> Int
 size =
-    rows >> List.length
+    cells >> List.length >> toFloat >> sqrt >> truncate
 
 
-updateRows : List Row -> Board -> Board
-updateRows rows (Board _) =
-    Board rows
+updateCells : List Cell -> Board -> Board
+updateCells cells (Board _) =
+    Board cells
 
 
 getCellAt : Board -> Coordinates -> Maybe Cell
 getCellAt board coordinates =
-    --TODO: clean up!
-    rows board
-        |> List.concatMap identity
-        |> List.foldl
-            (\cell acc ->
-                case ( acc, cellCoordinates cell == coordinates ) of
-                    ( Nothing, True ) ->
-                        Just cell
+    cells board |> List.filter (isTargetCell coordinates) |> List.head
 
-                    ( acc_, _ ) ->
-                        acc
-            )
-            Nothing
+
+isTargetCell : Coordinates -> Cell -> Bool
+isTargetCell coordinates =
+    cellCoordinates >> (==) coordinates
 
 
 updateCell : Cell -> (Cell -> Cell) -> Board -> Board
-updateCell cell fn board =
-    let
-        newRows =
-            rows board |> Utils.updateListAt (cellRowIdx cell) (Utils.updateListAt (cellColIdx cell) fn)
-    in
-    board |> updateRows newRows
+updateCell targetCell fn board =
+    cells board
+        |> List.map (updateIfTarget (isTargetCell <| cellCoordinates targetCell) fn)
+        |> flip updateCells board
+
+
+updateIfTarget : (a -> Bool) -> (a -> a) -> a -> a
+updateIfTarget isTarget update item =
+    if isTarget item then
+        update item
+    else
+        item
 
 
 setCellOwner : Cell -> Player -> Board -> Board
@@ -135,53 +138,33 @@ setCellOwner cell player =
 getCellNeighbor : Cell -> Board -> Direction -> Maybe Cell
 getCellNeighbor cell board direction =
     cellCoordinates cell
-        |> getCellNeighborCoordinates direction
+        |> Coordinates.getCellNeighborCoordinates direction
         |> getCellAt board
 
 
 findWinner : Board -> Player
 findWinner board =
-    (getTopRow board ++ getLeftColumn board)
-        |> Utils.uniqify
-        |> List.foldl
-            (\cell alreadyFoundWinner ->
-                case alreadyFoundWinner of
-                    Nobody ->
-                        findWinnerFromCell cell board
-
-                    winner ->
-                        winner
-            )
-            Nobody
+    getOuterCorner board |> List.foldl (findWinnerFromCell board) Nobody
 
 
-getTopRow : Board -> List Cell
-getTopRow board =
-    List.head (rows board) |> Maybe.withDefault []
+findWinnerFromCell : Board -> Cell -> Player -> Player
+findWinnerFromCell board cell alreadyFoundWinner =
+    case alreadyFoundWinner of
+        Nobody ->
+            findPathsFromCell cell board |> List.foldl (findWinnerFromPath board) Nobody
+
+        winner ->
+            winner
 
 
-getLeftColumn : Board -> List Cell
-getLeftColumn board =
-    rows board
-        |> List.concatMap
-            (\row ->
-                List.head row |> Maybe.map List.singleton |> Maybe.withDefault []
-            )
+findWinnerFromPath : Board -> List Cell -> Player -> Player
+findWinnerFromPath board path alreadyKnownWinner =
+    case alreadyKnownWinner of
+        Nobody ->
+            checkPathWinner board path
 
-
-findWinnerFromCell : Cell -> Board -> Player
-findWinnerFromCell cell board =
-    findPathsFromCell cell board
-        |> List.foldl
-            (\path acc ->
-                case acc of
-                    Nobody ->
-                        checkPathWinner board path
-
-                    winner ->
-                        winner
-            )
-            Nobody
+        winner ->
+            winner
 
 
 checkPathWinner : Board -> List Cell -> Player
@@ -207,11 +190,20 @@ findPathsFromCell cell board =
         |> List.map (searchOutwards cell board)
 
 
+
+--TODO: extract all this direction stuff!!
+
+
 searchOutwards : Cell -> Board -> Direction -> List Cell
 searchOutwards cell board direction =
-    searchDirection cell board direction
-        ++ searchDirection cell board (oppositeDirection direction)
-        |> Utils.uniqify
+    let
+        oppositeDirection =
+            Coordinates.oppositeDirection direction
+
+        search =
+            searchDirection cell board
+    in
+    search direction ++ (search oppositeDirection |> List.drop 1)
 
 
 searchDirection : Cell -> Board -> Direction -> List Cell
@@ -222,101 +214,3 @@ searchDirection cell board direction =
 
         Just neighbor ->
             cell :: searchDirection neighbor board direction
-
-
-getCellNeighborCoordinates : Direction -> Coordinates -> Coordinates
-getCellNeighborCoordinates direction =
-    case direction of
-        --TODO: consolodate?!?! EXTRACT coordinates!!!
-        Above ->
-            getCoordinatesAbove
-
-        Below ->
-            getCoordinatesBelow
-
-        Left ->
-            getCoordinatesLeft
-
-        Right ->
-            getCoordinatesRight
-
-        AboveLeft ->
-            getCoordinatesAbove >> getCoordinatesLeft
-
-        AboveRight ->
-            getCoordinatesAbove >> getCoordinatesRight
-
-        BelowLeft ->
-            getCoordinatesBelow >> getCoordinatesLeft
-
-        BelowRight ->
-            getCoordinatesBelow >> getCoordinatesRight
-
-
-type Direction
-    = Above
-    | Below
-    | Left
-    | Right
-    | AboveLeft
-    | AboveRight
-    | BelowLeft
-    | BelowRight
-
-
-oppositeDirection : Direction -> Direction
-oppositeDirection direction =
-    case direction of
-        Above ->
-            Below
-
-        Below ->
-            Above
-
-        Left ->
-            Right
-
-        Right ->
-            Left
-
-        AboveLeft ->
-            BelowRight
-
-        AboveRight ->
-            BelowLeft
-
-        BelowLeft ->
-            AboveRight
-
-        BelowRight ->
-            AboveLeft
-
-
-getCoordinatesAbove : Coordinates -> Coordinates
-getCoordinatesAbove =
-    addToRowCoordinate -1
-
-
-getCoordinatesBelow : Coordinates -> Coordinates
-getCoordinatesBelow =
-    addToRowCoordinate 1
-
-
-getCoordinatesLeft : Coordinates -> Coordinates
-getCoordinatesLeft =
-    addToColumnCoordinate -1
-
-
-getCoordinatesRight : Coordinates -> Coordinates
-getCoordinatesRight =
-    addToColumnCoordinate 1
-
-
-addToRowCoordinate : Int -> Coordinates -> Coordinates
-addToRowCoordinate n ( row, col ) =
-    ( row + n, col )
-
-
-addToColumnCoordinate : Int -> Coordinates -> Coordinates
-addToColumnCoordinate n ( row, col ) =
-    ( row, col + n )

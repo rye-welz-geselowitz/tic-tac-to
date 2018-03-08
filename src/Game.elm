@@ -24,12 +24,9 @@ new count =
 claimCell : Cell -> Game -> Game
 claimCell cell game =
     if Board.isCellOpen cell then
-        let
-            newBoard =
-                board game |> Board.setCellOwner cell (player game)
-        in
-        game
-            |> updateBoard newBoard
+        board game
+            |> Board.setCellOwner cell (player game)
+            |> flip updateBoard game
             |> setNextPlayer
             |> setWinner
     else

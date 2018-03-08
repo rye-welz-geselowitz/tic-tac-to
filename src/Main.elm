@@ -1,6 +1,6 @@
 module Main exposing (main)
 
-import Board exposing (Board, Cell, Row)
+import Board exposing (Board, Cell)
 import Game exposing (Game, board)
 import Html exposing (Html, button, div, img, table, td, text, tr)
 import Html.Events exposing (onClick)
@@ -85,7 +85,7 @@ boardView board =
         (Board.rows board |> List.map rowView)
 
 
-rowView : Row -> Html Msg
+rowView : List Cell -> Html Msg
 rowView row =
     tr []
         (row |> List.map cellView)
