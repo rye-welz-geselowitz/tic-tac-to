@@ -2,6 +2,8 @@ module Board
     exposing
         ( Board
         , Cell
+        , cellAt
+        , cellCoordinates
         , cellOwner
         , findWinner
         , isCellOpen
@@ -9,7 +11,7 @@ module Board
         , newCellAt
         , openCells
         , rows
-        , setCellOwner
+        , setCellOwnerAt
         , topCornerCell
         )
 
@@ -43,9 +45,14 @@ isCellOpen cell =
     cellOwner cell == Nobody
 
 
-setCellOwner : Cell -> Player -> Board -> Board
-setCellOwner cell player =
-    updateCell cell (updateCellOwner player)
+setCellOwnerAt : Coordinates -> Player -> Board -> Board
+setCellOwnerAt coordinates player board =
+    case cellAt board coordinates of
+        Nothing ->
+            board
+
+        Just cell ->
+            updateCell cell (updateCellOwner player) board
 
 
 topCornerCell : Cell
@@ -137,8 +144,8 @@ updateCells cells (Board _) =
     Board cells
 
 
-getCellAt : Board -> Coordinates -> Maybe Cell
-getCellAt board coordinates =
+cellAt : Board -> Coordinates -> Maybe Cell
+cellAt board coordinates =
     cells board |> List.filter (isTargetCell coordinates) |> List.head
 
 
@@ -199,7 +206,7 @@ findPathsFromCell cell board =
 
 searchOutwards : Cell -> Board -> Direction -> List Cell
 searchOutwards cell board =
-    Coordinates.searchOutwards cell cellCoordinates (getCellAt board)
+    Coordinates.searchOutwards cell cellCoordinates (cellAt board)
 
 
 updateIfTarget : (a -> Bool) -> (a -> a) -> a -> a

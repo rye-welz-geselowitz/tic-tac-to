@@ -90,20 +90,18 @@ update msg model =
         ClaimCell cell ->
             ( { model
                 | game =
-                    Game.claimCell cell model.player model.game
+                    Board.cellCoordinates cell |> Game.claimCellAt model.player model.game
                 , player = nextPlayer model
               }
             , nextMoveCmd model
             )
 
         GetComputerMove ->
-            let
-                cell =
-                    ComputerPlayer.getNextMove model.game
-            in
             ( { model
                 | game =
-                    Game.claimCell cell O model.game
+                    model.game
+                        |> ComputerPlayer.getNextMove
+                        |> Game.claimCellAt O model.game
               }
             , Cmd.none
             )

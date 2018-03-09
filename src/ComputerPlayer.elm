@@ -1,9 +1,10 @@
 module ComputerPlayer exposing (getNextMove)
 
-import Board exposing (Cell)
+import Board
+import Coordinates exposing (Coordinates)
 import Game exposing (Game)
 
 
-getNextMove : Game -> Cell
+getNextMove : Game -> Coordinates
 getNextMove =
-    Game.board >> Board.openCells >> List.head >> Maybe.withDefault Board.topCornerCell
+    Game.board >> Board.openCells >> List.head >> Maybe.map Board.cellCoordinates >> Maybe.withDefault ( 0, 0 )

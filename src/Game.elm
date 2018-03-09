@@ -1,6 +1,7 @@
-module Game exposing (Game, board, claimCell, new, player, winner)
+module Game exposing (Game, board, claimCellAt, new, player, winner)
 
-import Board exposing (Board, Cell)
+import Board exposing (Board)
+import Coordinates exposing (Coordinates)
 import Player exposing (Player(..))
 
 
@@ -21,16 +22,23 @@ new count =
         }
 
 
-claimCell : Cell -> Player -> Game -> Game
-claimCell cell claimant game =
-    if Board.isCellOpen cell && claimant == player game && isInSession game then
+claimCellAt : Player -> Game -> Coordinates -> Game
+claimCellAt claimant game coordinates =
+    if validateMove coordinates claimant game then
         board game
-            |> Board.setCellOwner cell (player game)
+            |> Board.setCellOwnerAt coordinates (player game)
             |> flip updateBoard game
             |> setNextPlayer
             |> setWinner
     else
         game
+
+
+validateMove : Coordinates -> Player -> Game -> Bool
+validateMove coordinates claimant game =
+    Board.cellAt (board game) coordinates
+        |> Maybe.map (Board.isCellOpen >> (&&) (claimant == player game) >> (&&) (isInSession game))
+        |> Maybe.withDefault False
 
 
 isInSession : Game -> Bool
