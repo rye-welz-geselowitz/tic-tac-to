@@ -9,7 +9,6 @@ type Game
         { player : Player
         , board : Board
         , winner : Player
-        , isActive : Bool --TODO: give this meaning!
         }
 
 
@@ -19,13 +18,12 @@ new count =
         { player = X
         , board = Board.new count
         , winner = Nobody
-        , isActive = False
         }
 
 
-claimCell : Cell -> Game -> Game
-claimCell cell game =
-    if Board.isCellOpen cell then
+claimCell : Cell -> Player -> Game -> Game
+claimCell cell claimant game =
+    if Board.isCellOpen cell && claimant == player game && isInSession game then
         board game
             |> Board.setCellOwner cell (player game)
             |> flip updateBoard game
@@ -33,6 +31,11 @@ claimCell cell game =
             |> setWinner
     else
         game
+
+
+isInSession : Game -> Bool
+isInSession =
+    winner >> (==) Nobody
 
 
 setWinner : Game -> Game
@@ -72,4 +75,4 @@ updatePlayer player (Game data) =
 
 setNextPlayer : Game -> Game
 setNextPlayer game =
-    player game |> Player.getNext |> flip updatePlayer game
+    player game |> Player.next |> flip updatePlayer game

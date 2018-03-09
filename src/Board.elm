@@ -6,9 +6,11 @@ module Board
         , findWinner
         , isCellOpen
         , new
+        , newCellAt
         , openCells
         , rows
         , setCellOwner
+        , topCornerCell
         )
 
 import Coordinates exposing (Coordinates, Direction)
@@ -44,6 +46,11 @@ isCellOpen cell =
 setCellOwner : Cell -> Player -> Board -> Board
 setCellOwner cell player =
     updateCell cell (updateCellOwner player)
+
+
+topCornerCell : Cell
+topCornerCell =
+    newCellAt ( 0, 0 )
 
 
 

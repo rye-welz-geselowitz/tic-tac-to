@@ -1,4 +1,4 @@
-module Player exposing (Player(..), getNext)
+module Player exposing (Player(..), next)
 
 
 type Player
@@ -7,8 +7,8 @@ type Player
     | Nobody
 
 
-getNext : Player -> Player
-getNext player =
+next : Player -> Player
+next player =
     case player of
         X ->
             O

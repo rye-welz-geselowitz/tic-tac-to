@@ -1,33 +1,68 @@
 module Main exposing (main)
 
 import Board exposing (Board, Cell)
+import ComputerPlayer
 import Game exposing (Game, board)
 import Html exposing (Html, button, div, img, table, td, text, tr)
 import Html.Events exposing (onClick)
 import Player exposing (Player(..))
+import Process
+import Task
 
 
 ---- MODEL ----
 
 
-init : ( Model, Cmd Msg )
-init =
-    ( { game = Game.new 3
-      , mode = OnePlayer
-      }
-    , Cmd.none
-    )
-
-
 type alias Model =
     { game : Game
     , mode : Mode
+    , player : Player
     }
+
+
+initialModel : Model
+initialModel =
+    { game = initialGame
+    , mode = TwoPlayer
+    , player = X
+    }
+
+
+initialGame : Game
+initialGame =
+    Game.new 3
+
+
+init : ( Model, Cmd Msg )
+init =
+    ( initialModel
+    , Cmd.none
+    )
 
 
 type Mode
     = TwoPlayer
     | OnePlayer
+
+
+nextPlayer : Model -> Player
+nextPlayer model =
+    case model.mode of
+        OnePlayer ->
+            model.player
+
+        TwoPlayer ->
+            Player.next model.player
+
+
+nextMoveCmd : Model -> Cmd Msg
+nextMoveCmd model =
+    case model.mode of
+        OnePlayer ->
+            Task.perform (always GetComputerMove) (Process.sleep 600)
+
+        TwoPlayer ->
+            Cmd.none
 
 
 
@@ -37,18 +72,38 @@ type Mode
 type Msg
     = InitiateGame Mode
     | ClaimCell Cell
+    | GetComputerMove
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         InitiateGame mode ->
-            ( model, Cmd.none )
+            ( { model
+                | game = initialGame
+                , mode = mode
+                , player = X
+              }
+            , Cmd.none
+            )
 
         ClaimCell cell ->
             ( { model
                 | game =
-                    Game.claimCell cell model.game
+                    Game.claimCell cell model.player model.game
+                , player = nextPlayer model
+              }
+            , nextMoveCmd model
+            )
+
+        GetComputerMove ->
+            let
+                cell =
+                    ComputerPlayer.getNextMove model.game
+            in
+            ( { model
+                | game =
+                    Game.claimCell cell O model.game
               }
             , Cmd.none
             )
@@ -70,10 +125,11 @@ view model =
 restartButtons : Html Msg
 restartButtons =
     div []
-        [ button [ onClick <| InitiateGame TwoPlayer ]
-            [ text "Start Two Player Game" ]
+        [ text "RESTART:"
+        , button [ onClick <| InitiateGame TwoPlayer ]
+            [ text "[2 PLAYERS]" ]
         , button [ onClick <| InitiateGame OnePlayer ]
-            [ text "Start One Player Game" ]
+            [ text "[1 PLAYER]" ]
         ]
 
 
