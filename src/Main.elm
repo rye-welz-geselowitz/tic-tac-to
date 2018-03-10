@@ -193,7 +193,7 @@ cellContents : Cell -> Html Msg
 cellContents cell =
     case Board.cellOwner cell of
         Nobody ->
-            text "-"
+            text ""
 
         X ->
             text "x"
