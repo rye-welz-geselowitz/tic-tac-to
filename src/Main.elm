@@ -3,7 +3,8 @@ module Main exposing (main)
 import Board exposing (Board, Cell)
 import ComputerPlayer
 import Game exposing (Game, board)
-import Html exposing (Html, button, div, img, table, td, text, tr)
+import Html exposing (Html, button, div, h1, img, span, table, td, text, tr)
+import Html.Attributes exposing (class, classList)
 import Html.Events exposing (onClick)
 import Player exposing (Player(..))
 import Process
@@ -113,63 +114,85 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-    div []
-        [ gameView model.game
-        , modeView model.mode
-        , restartButtons
+    div [ class "game-panel" ]
+        [ restartButtons model
+        , h1 [] [ text "tic tac toe" ]
+        , gameView model.game
+        , turnView model.game
         ]
 
 
-restartButtons : Html Msg
-restartButtons =
-    div []
-        [ text "RESTART:"
-        , button [ onClick <| InitiateGame TwoPlayer ]
-            [ text "[2 PLAYERS]" ]
-        , button [ onClick <| InitiateGame OnePlayer ]
-            [ text "[1 PLAYER]" ]
+restartButtons : Model -> Html Msg
+restartButtons model =
+    div [ class "restart-panel" ]
+        (List.map
+            (newGameButton model)
+            [ TwoPlayer, OnePlayer ]
+        )
+
+
+newGameButton : Model -> Mode -> Html Msg
+newGameButton model mode =
+    button
+        [ onClick <| InitiateGame mode
+        , classList [ ( "highlighted", mode == model.mode ) ]
         ]
+        [ text <| modeDisplay mode ]
 
 
-modeView : Mode -> Html Msg
-modeView mode =
+modeDisplay : Mode -> String
+modeDisplay mode =
     case mode of
         OnePlayer ->
-            text "1 PLAYER"
+            "1 PLAYER"
 
         TwoPlayer ->
-            text "2 PLAYERS"
+            "2 PLAYERS"
 
 
 gameView : Game -> Html Msg
 gameView game =
     div []
         [ boardView (Game.board game)
-        , turnView game
         ]
 
 
 turnView : Game -> Html Msg
 turnView game =
-    (case ( Game.winner game, Game.player game ) of
-        ( Nobody, X ) ->
-            "X turn"
+    div [ class "turn-panel" ]
+        (case ( Game.finalWinner game, Game.player game ) of
+            ( Just Nobody, _ ) ->
+                [ span [ class "highlighted" ]
+                    [ text "It's a draw!" ]
+                ]
 
-        ( Nobody, O ) ->
-            "O turn"
+            ( Just winner, _ ) ->
+                [ playerNameDisplay winner
+                , span [] [ text " wins!" ]
+                ]
 
-        ( X, _ ) ->
-            "X won!!"
+            ( Nothing, player ) ->
+                [ span [] [ text "turn: " ]
+                , playerNameDisplay player
+                ]
+        )
 
-        ( O, _ ) ->
-            "O won!!"
 
-        _ ->
-            "Something wrong"
-    )
-        |> text
-        |> List.singleton
-        |> div []
+playerNameDisplay : Player -> Html Msg
+playerNameDisplay player =
+    let
+        str =
+            case player of
+                X ->
+                    "X"
+
+                O ->
+                    "O"
+
+                _ ->
+                    "nobody's"
+    in
+    span [ class "highlighted" ] [ text str ]
 
 
 boardView : Board -> Html Msg

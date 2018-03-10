@@ -1,6 +1,5 @@
 body {
   text-align: center;
-
 }
 
 img {
@@ -19,15 +18,46 @@ table, th, td {
 }
 
 td{
-  background: black;
+  background: #236984;
   color: white;
   margin: 5px;
-  font-size: 36px;
-  width: 25px;
+  font-size: 42px;
+  width: 50px;
   text-align: center;
-  height: 45px;
+  height: 65px;
 }
 
-div{
+h1{
+  color: #236984;
+}
+
+.game-panel{
+  width: 500px;
+  display: inline-block;
+  border: solid 1px #236984;
+}
+button.highlighted{
+  background: #236984;
+  color: white;
+}
+span.highlighted{
+  color: #236984;
+  font-weight: bold;
+}
+
+.restart-panel{
+  background: darkgray;
+  text-align: left;
+  padding: 5px;
+}
+
+.turn-panel{
+  padding: 20px;
+  font-size: 24px;
+}
+button{
+  background: white;
+  border: solid 1px #236984;
   padding: 10px;
+  margin: 5px;
 }

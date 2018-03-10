@@ -1,4 +1,13 @@
-module Game exposing (Game, board, claimCellAt, isInSession, new, player, winner)
+module Game
+    exposing
+        ( Game
+        , board
+        , claimCellAt
+        , finalWinner
+        , isInSession
+        , new
+        , player
+        )
 
 import Board exposing (Board)
 import Coordinates exposing (Coordinates)
@@ -42,18 +51,30 @@ validateMove coordinates claimant game =
 
 
 isInSession : Game -> Bool
-isInSession =
-    winner >> (==) Nobody
+isInSession game =
+    winner game
+        == Nobody
+        && (board game |> Board.openCells |> List.length |> (<) 0)
 
 
 setWinner : Game -> Game
 setWinner game =
-    updateWinner (Board.findWinner (board game)) game
+    board game |> Board.findWinner |> flip updateWinner game
 
 
 board : Game -> Board
 board (Game data) =
     data.board
+
+
+finalWinner : Game -> Maybe Player
+finalWinner game =
+    case ( isInSession game, winner game ) of
+        ( True, _ ) ->
+            Nothing
+
+        ( False, winner ) ->
+            Just winner
 
 
 player : Game -> Player
