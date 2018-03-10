@@ -1,4 +1,4 @@
-module Game exposing (Game, board, claimCellAt, new, player, winner)
+module Game exposing (Game, board, claimCellAt, isInSession, new, player, winner)
 
 import Board exposing (Board)
 import Coordinates exposing (Coordinates)

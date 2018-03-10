@@ -135,10 +135,10 @@ modeView : Mode -> Html Msg
 modeView mode =
     case mode of
         OnePlayer ->
-            text "Playing computer"
+            text "1 PLAYER"
 
         TwoPlayer ->
-            text "Two players"
+            text "2 PLAYERS"
 
 
 gameView : Game -> Html Msg
